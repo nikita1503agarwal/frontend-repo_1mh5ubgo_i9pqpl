@@ -177,21 +177,40 @@ function App() {
     };
   };
 
+  // Handle selecting an answer and moving forward
+  const handleAnswer = (value) => {
+    const newAnswers = [...answers, value];
+    setAnswers(newAnswers);
+
+    if (newAnswers.length >= 10) {
+      const result = calculateScore(newAnswers);
+      setClarityScore(result.clarity);
+      setArchetype({
+        builder: result.builder,
+        warrior: result.warrior,
+        teacher: result.teacher,
+        primary: result.primary,
+      });
+      // Small delay for UX polish then show results
+      setTimeout(() => setScreen('results'), 150);
+    }
+  };
+
   // Atlas response bank with variants
   const atlasBank = {
     default: [
       "That's a real question. Let's dig deeper. What's driving this?",
-      "Slow down. Name the tension in one sentence.",
-      "Be specific. What outcome do you actually want?",
+      'Slow down. Name the tension in one sentence.',
+      'Be specific. What outcome do you actually want?',
     ],
     purpose: [
       "Purpose isn't found—it's built. What's your next concrete action?",
-      "Your purpose hides in your patterns. Where do you consistently show up strong?",
-      "Purpose requires constraint. What will you stop doing this week?",
+      'Your purpose hides in your patterns. Where do you consistently show up strong?',
+      'Purpose requires constraint. What will you stop doing this week?',
     ],
     fear: [
       'Fear points to what matters. Name it precisely.',
-      'You don\'t beat fear by thinking—by moving. What is the smallest step? ',
+      "You don't beat fear by thinking—by moving. What is the smallest step? ",
       'Courage is commitment to action under uncertainty. What will you do today?',
     ],
     quit: [
@@ -200,14 +219,14 @@ function App() {
       'Before stopping, define your finish line. What would “done” look like?',
     ],
     build: [
-      "Good. Define step one so small it\'s embarrassing.",
-      'Block 45 minutes on your calendar now. What will you build in that time?',
-      'Who can hold you accountable for this week\'s target?',
+      "Good. Define step one so small it's embarrassing.",
+      "Block 45 minutes on your calendar now. What will you build in that time?",
+      "Who can hold you accountable for this week's target?",
     ],
     navigate: [
       'I can take you there. Want to go to the main interface now?',
       'Ready to move? I can guide you to the interface.',
-      'Let\'s jump into the app. Do you want the main screen?',
+      "Let's jump into the app. Do you want the main screen?",
     ],
   };
 
@@ -266,14 +285,14 @@ function App() {
       const intro = `Your clarity score: ${currentUser.clarity}%. Primary: ${currentUser.archetype}.`;
 
       const guideByArchetype = {
-        Builder: 'You execute through creation. Let\'s get you building—start with the first small step.',
+        Builder: "You execute through creation. Let's get you building—start with the first small step.",
         Warrior: 'Discipline is your edge. Channel it into a concrete target this week.',
         Teacher: 'Your leverage is insight. Turn one idea into a system someone else can follow.',
       };
 
-      const tailored = guideByArchetype[currentUser.archetype] || 'Let\'s get aligned and moving.';
+      const tailored = guideByArchetype[currentUser.archetype] || "Let's get aligned and moving.";
       const cta = currentUser.clarity >= 80
-        ? 'You\'re ready. I\'ll take you to the main interface now.'
+        ? "You're ready. I'll take you to the main interface now."
         : 'Want me to take you to the main interface to continue?';
 
       setAtlasConversation([
