@@ -191,8 +191,9 @@ function App() {
         teacher: result.teacher,
         primary: result.primary,
       });
-      // Small delay for UX polish then show results
-      setTimeout(() => setScreen('results'), 150);
+      // Navigate immediately to avoid rendering an undefined question
+      setScreen('results');
+      return;
     }
   };
 
@@ -552,6 +553,20 @@ function App() {
   if (gate === 'app' && screen === 'assessment') {
     const currentQ = questions[answers.length];
     const progress = Math.round((answers.length / 10) * 100);
+
+    // Safety guard: if answers already complete, route to results view
+    if (!currentQ) {
+      return (
+        <Background>
+          <Header />
+          <div className="max-w-2xl mx-auto px-6 py-12">
+            <div className="rounded-2xl border border-amber-500/20 bg-slate-900/50 backdrop-blur p-8 text-center">
+              <p className="text-slate-300">Calculating your profile…</p>
+            </div>
+          </div>
+        </Background>
+      );
+    }
 
     return (
       <Background>
