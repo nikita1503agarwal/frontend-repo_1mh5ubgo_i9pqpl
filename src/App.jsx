@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ArrowRight, Compass, Zap, AlertCircle } from 'lucide-react';
 import Spline from '@splinetool/react-spline';
 
@@ -6,6 +6,26 @@ function App() {
   // Global flow state
   const [gate, setGate] = useState('oath'); // oath | fund | app
   const [screen, setScreen] = useState('landing'); // landing | assessment | results | atlas
+
+  // Dev helpers: allow URL params to jump to stages quickly
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const dev = params.get('dev');
+      const stage = params.get('stage'); // oath | fund | app
+      const view = params.get('screen'); // landing | assessment | results | atlas
+
+      if (stage === 'oath' || stage === 'fund' || stage === 'app') {
+        setGate(stage);
+      } else if (dev === '1' || dev === 'true') {
+        setGate('app');
+      }
+
+      if (view === 'landing' || view === 'assessment' || view === 'results' || view === 'atlas') {
+        setScreen(view);
+      }
+    } catch {}
+  }, []);
 
   // Assessment state
   const [answers, setAnswers] = useState([]);
@@ -16,6 +36,9 @@ function App() {
   const [atlasConversation, setAtlasConversation] = useState([]);
   const [userInput, setUserInput] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Track variations to avoid repeating same response
+  const atlasCycleRef = useRef({}); // key -> next index
 
   // Logo fallback handling
   const [logoOk, setLogoOk] = useState(true);
@@ -153,43 +176,85 @@ function App() {
     };
   };
 
-  const handleAnswer = (value) => {
-    const newAnswers = [...answers, value];
-    setAnswers(newAnswers);
+  // Atlas response bank with variants
+  const atlasBank = {
+    default: [
+      "That's a real question. Let's dig deeper. What's driving this?",
+      "Slow down. Name the tension in one sentence.",
+      "Be specific. What outcome do you actually want?",
+    ],
+    purpose: [
+      "Purpose isn't found—it's built. What's your next concrete action?",
+      "Your purpose hides in your patterns. Where do you consistently show up strong?",
+      "Purpose requires constraint. What will you stop doing this week?",
+    ],
+    fear: [
+      'Fear points to what matters. Name it precisely.',
+      'You don\'t beat fear by thinking—by moving. What is the smallest step? ',
+      'Courage is commitment to action under uncertainty. What will you do today?',
+    ],
+    quit: [
+      'Are you quitting the grind or the goal? Those are different. Which is it?',
+      'If you pause, what will you do with the energy you get back?',
+      'Before stopping, define your finish line. What would “done” look like?',
+    ],
+    build: [
+      "Good. Define step one so small it\'s embarrassing.",
+      'Block 45 minutes on your calendar now. What will you build in that time?',
+      'Who can hold you accountable for this week\'s target?',
+    ],
+    navigate: [
+      'I can take you there. Want to go to the main interface now?',
+      'Ready to move? I can guide you to the interface.',
+      'Let\'s jump into the app. Do you want the main screen?',
+    ],
+  };
 
-    if (newAnswers.length === 10) {
-      const score = calculateScore(newAnswers);
-      setClarityScore(score.clarity);
-      setArchetype(score);
-      setScreen('results');
-    }
+  const nextVariant = (key) => {
+    const list = atlasBank[key] || atlasBank.default;
+    const cur = atlasCycleRef.current[key] || 0;
+    const text = list[cur % list.length];
+    atlasCycleRef.current[key] = (cur + 1) % list.length;
+    return text;
+  };
+
+  const decideAtlasKey = (text) => {
+    const t = text.toLowerCase();
+    if (/(home|main|interface|dashboard|go back)/.test(t)) return 'navigate';
+    if (/(purpose|meaning|mission)/.test(t)) return 'purpose';
+    if (/(fear|afraid|scared|anxious|doubt)/.test(t)) return 'fear';
+    if (/(quit|leave|give up|stop)/.test(t)) return 'quit';
+    if (/(build|start|begin|launch|create)/.test(t)) return 'build';
+    return 'default';
   };
 
   const handleAtlasMessage = () => {
-    if (!userInput.trim()) return;
+    const text = userInput.trim();
+    if (!text) return;
 
-    const newConversation = [...atlasConversation, { role: 'user', text: userInput }];
+    const key = decideAtlasKey(text);
+    const response = nextVariant(key);
 
-    const atlasResponses = {
-      default: "That's a real question. Let's dig deeper. What's driving this?",
-      purpose:
-        "Your purpose is heavy. But that's exactly why it matters. What specifically are you wrestling with?",
-      fear: 'Fear is just clarity trying to protect you. What are you actually afraid of?',
-      quit: 'Before you quit, answer this: Are you running FROM something or running TOWARD something?',
-      build: "Now we're talking. What's the first step? Not the big vision—the next small step.",
-    };
-
-    let response = atlasResponses.default;
-    if (userInput.toLowerCase().includes('purpose')) response = atlasResponses.purpose;
-    if (userInput.toLowerCase().includes('afraid') || userInput.toLowerCase().includes('scared'))
-      response = atlasResponses.fear;
-    if (userInput.toLowerCase().includes('quit') || userInput.toLowerCase().includes('leave'))
-      response = atlasResponses.quit;
-    if (userInput.toLowerCase().includes('build') || userInput.toLowerCase().includes('start'))
-      response = atlasResponses.build;
-
-    newConversation.push({ role: 'atlas', text: response });
+    const newConversation = [
+      ...atlasConversation,
+      { role: 'user', text },
+      { role: 'atlas', text: response },
+    ];
     setAtlasConversation(newConversation);
+
+    // If user asks to navigate, immediately offer quick actions
+    if (key === 'navigate') {
+      // Also auto-suggest moving to main interface by adding a system hint message
+      setTimeout(() => {
+        setAtlasConversation((prev) => [
+          ...prev,
+          { role: 'atlas', text: 'Taking you to the main interface. You can always come back to chat.' },
+        ]);
+        setScreen('landing');
+        setGate('app');
+      }, 300);
+    }
+
     setUserInput('');
   };
 
@@ -272,6 +337,16 @@ function App() {
               </button>
             </div>
 
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setGate('app')}
+                className="text-xs text-slate-400 hover:text-white underline underline-offset-4"
+                aria-label="Skip for now and go to the app"
+              >
+                Skip for now → Go to the app
+              </button>
+            </div>
+
             <p className="mt-8 text-xs text-slate-400 border-t border-slate-800 pt-6">
               Nothing in the TELIOS Oath or Commitment Fund constitutes a legal contract or financial investment. The Oath is a personal declaration. The Commitment Fund is a voluntary behavioral tool, fully refundable, and may be withdrawn by the user at any time. TELIOS does not assume liability for personal decisions, financial choices, or emotional outcomes. This platform offers guidance, structure, and support — not medical, legal, financial, or psychological treatment.
             </p>
@@ -324,6 +399,16 @@ function App() {
                 className="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-lg border border-slate-700 transition"
               >
                 Cancel
+              </button>
+            </div>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setGate('app')}
+                className="text-xs text-slate-400 hover:text-white underline underline-offset-4"
+                aria-label="Skip for now and go to the app"
+              >
+                Skip for now → Go to the app
               </button>
             </div>
 
@@ -568,13 +653,41 @@ function App() {
             ))}
           </div>
 
+          {/* Quick actions to lead user to main interface and features */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button
+              onClick={() => { setGate('app'); setScreen('landing'); }}
+              className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2"
+            >
+              Main Interface
+            </button>
+            <button
+              onClick={() => setScreen('assessment')}
+              className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2"
+            >
+              Start Assessment
+            </button>
+            <button
+              onClick={() => setScreen('results')}
+              className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2"
+            >
+              View Results
+            </button>
+            <button
+              onClick={() => { setAtlasConversation([]); setUserInput(''); }}
+              className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2"
+            >
+              Clear Chat
+            </button>
+          </div>
+
           <div className="flex gap-2">
             <input
               type="text"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAtlasMessage()}
-              placeholder="Ask ATLAS..."
+              placeholder="Ask ATLAS... (try: home, build, purpose, fear, quit)"
               className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-400"
             />
             <button
