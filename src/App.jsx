@@ -39,6 +39,7 @@ function App() {
 
   // Track variations to avoid repeating same response
   const atlasCycleRef = useRef({}); // key -> next index
+  const lastInteractionRef = useRef(Date.now());
 
   // Logo fallback handling
   const [logoOk, setLogoOk] = useState(true);
@@ -232,6 +233,8 @@ function App() {
     const text = userInput.trim();
     if (!text) return;
 
+    lastInteractionRef.current = Date.now();
+
     const key = decideAtlasKey(text);
     const response = nextVariant(key);
 
@@ -242,9 +245,8 @@ function App() {
     ];
     setAtlasConversation(newConversation);
 
-    // If user asks to navigate, immediately offer quick actions
+    // If user asks to navigate, immediately offer quick actions and move
     if (key === 'navigate') {
-      // Also auto-suggest moving to main interface by adding a system hint message
       setTimeout(() => {
         setAtlasConversation((prev) => [
           ...prev,
@@ -257,6 +259,43 @@ function App() {
 
     setUserInput('');
   };
+
+  // Auto guidance: when arriving in ATLAS, seed tailored guidance and optionally route to main interface
+  useEffect(() => {
+    if (gate === 'app' && screen === 'atlas' && currentUser && atlasConversation.length === 0) {
+      const intro = `Your clarity score: ${currentUser.clarity}%. Primary: ${currentUser.archetype}.`;
+
+      const guideByArchetype = {
+        Builder: 'You execute through creation. Let\'s get you building—start with the first small step.',
+        Warrior: 'Discipline is your edge. Channel it into a concrete target this week.',
+        Teacher: 'Your leverage is insight. Turn one idea into a system someone else can follow.',
+      };
+
+      const tailored = guideByArchetype[currentUser.archetype] || 'Let\'s get aligned and moving.';
+      const cta = currentUser.clarity >= 80
+        ? 'You\'re ready. I\'ll take you to the main interface now.'
+        : 'Want me to take you to the main interface to continue?';
+
+      setAtlasConversation([
+        { role: 'atlas', text: intro },
+        { role: 'atlas', text: tailored },
+        { role: 'atlas', text: cta },
+      ]);
+
+      // Auto-route for high clarity if user doesn\'t interact quickly
+      if (currentUser.clarity >= 80) {
+        const start = Date.now();
+        setTimeout(() => {
+          const inactive = Date.now() - Math.max(lastInteractionRef.current, start) > 1000;
+          if (inactive && gate === 'app' && screen === 'atlas') {
+            setScreen('landing');
+            setGate('app');
+          }
+        }, 1500);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate, screen, currentUser]);
 
   // Elegant wrapper + background
   const Background = ({ children }) => (
@@ -685,13 +724,13 @@ function App() {
             <input
               type="text"
               value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAtlasMessage()}
+              onChange={(e) => { setUserInput(e.target.value); lastInteractionRef.current = Date.now(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { lastInteractionRef.current = Date.now(); handleAtlasMessage(); } }}
               placeholder="Ask ATLAS... (try: home, build, purpose, fear, quit)"
               className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-400"
             />
             <button
-              onClick={handleAtlasMessage}
+              onClick={() => { lastInteractionRef.current = Date.now(); handleAtlasMessage(); }}
               className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-6 rounded-lg transition"
             >
               Send
