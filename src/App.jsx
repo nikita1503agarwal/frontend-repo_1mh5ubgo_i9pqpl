@@ -1,73 +1,606 @@
+import React, { useState, useMemo } from 'react';
+import { ArrowRight, Compass, Zap, AlertCircle } from 'lucide-react';
+import Spline from '@splinetool/react-spline';
+
 function App() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Subtle pattern overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)]"></div>
+  // Global flow state
+  const [gate, setGate] = useState('oath'); // oath | fund | app
+  const [screen, setScreen] = useState('landing'); // landing | assessment | results | atlas
 
-      <div className="relative min-h-screen flex items-center justify-center p-8">
-        <div className="max-w-2xl w-full">
-          {/* Header with Flames icon */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center mb-6">
-              <img
-                src="/flame-icon.svg"
-                alt="Flames"
-                className="w-24 h-24 drop-shadow-[0_0_25px_rgba(59,130,246,0.5)]"
-              />
+  // Assessment state
+  const [answers, setAnswers] = useState([]);
+  const [clarityScore, setClarityScore] = useState(0);
+  const [archetype, setArchetype] = useState({});
+
+  // Atlas state
+  const [atlasConversation, setAtlasConversation] = useState([]);
+  const [userInput, setUserInput] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Logo fallback handling
+  const [logoOk, setLogoOk] = useState(true);
+  const logoSrc = useMemo(() => '/Tellios Logo Dark Updated.png', []);
+
+  const questions = [
+    {
+      id: 1,
+      text: 'When do you feel most alive?',
+      options: [
+        { text: 'Building something from nothing', value: 'A' },
+        { text: 'Protecting or serving others', value: 'B' },
+        { text: 'Sharing knowledge or guiding', value: 'C' },
+        { text: 'Alone in deep reflection', value: 'D' },
+      ],
+    },
+    {
+      id: 2,
+      text: 'A close friend calls in crisis. Your first instinct?',
+      options: [
+        { text: 'Help them create a plan to solve it', value: 'A' },
+        { text: 'Drop everything and be there physically', value: 'B' },
+        { text: 'Listen deeply and help them find their answer', value: 'C' },
+        { text: 'Give them space but offer resources', value: 'D' },
+      ],
+    },
+    {
+      id: 3,
+      text: 'How would you want to be remembered?',
+      options: [
+        { text: 'He built something that outlasted him', value: 'A' },
+        { text: 'He showed up when it mattered—protected and served', value: 'B' },
+        { text: 'He changed lives through wisdom', value: 'C' },
+        { text: 'He lived with complete authenticity', value: 'D' },
+      ],
+    },
+    {
+      id: 4,
+      text: 'Which challenge excites you most?',
+      options: [
+        { text: 'Starting a business or creating something new', value: 'A' },
+        { text: 'Mastering a difficult physical or tactical skill', value: 'B' },
+        { text: 'Understanding complex topics deeply', value: 'C' },
+        { text: 'Exploring philosophical or existential questions', value: 'D' },
+      ],
+    },
+    {
+      id: 5,
+      text: 'What frustrates you most about the world?',
+      options: [
+        { text: 'Inefficiency and broken systems', value: 'A' },
+        { text: 'Injustice and weakness being exploited', value: 'B' },
+        { text: 'Ignorance and people staying stuck', value: 'C' },
+        { text: 'Superficiality and inauthenticity', value: 'D' },
+      ],
+    },
+    {
+      id: 6,
+      text: "With 6 months free, you'd spend most time...",
+      options: [
+        { text: 'Building a project, business, or creative work', value: 'A' },
+        { text: 'Training, traveling to challenging environments', value: 'B' },
+        { text: 'Learning deeply and mentoring others', value: 'C' },
+        { text: 'Reflecting, writing, exploring ideas', value: 'D' },
+      ],
+    },
+    {
+      id: 7,
+      text: 'In a team working on a hard problem, you...',
+      options: [
+        { text: 'Design the strategy others miss', value: 'A' },
+        { text: 'Take the hardest task and execute relentlessly', value: 'B' },
+        { text: 'Ensure everyone understands and mentor them', value: 'C' },
+        { text: "Ask if we're solving the right problem", value: 'D' },
+      ],
+    },
+    {
+      id: 8,
+      text: 'What drives you more than anything?',
+      options: [
+        { text: 'Turning vision into tangible reality', value: 'A' },
+        { text: 'Being someone others can count on', value: 'B' },
+        { text: 'Helping others see truth they missed', value: 'C' },
+        { text: 'Living in complete alignment with my values', value: 'D' },
+      ],
+    },
+    {
+      id: 9,
+      text: 'Which secretly scares you most?',
+      options: [
+        { text: 'Dying without building something meaningful', value: 'A' },
+        { text: 'Being weak when someone needs me', value: 'B' },
+        { text: 'Staying mentally stagnant', value: 'C' },
+        { text: "Living a life that isn't truly mine", value: 'D' },
+      ],
+    },
+    {
+      id: 10,
+      text: 'Right now, which project would you start today?',
+      options: [
+        { text: 'Launch a business or creative venture', value: 'A' },
+        { text: 'Train for something physically demanding', value: 'B' },
+        { text: 'Create a course or start teaching', value: 'C' },
+        { text: "None of these—I'm still searching", value: 'D' },
+      ],
+    },
+  ];
+
+  const calculateScore = (responses) => {
+    const counts = { A: 0, B: 0, C: 0, D: 0 };
+    responses.forEach((r) => (counts[r]++));
+
+    const total = counts.A + counts.B + counts.C;
+    const builderPct = total > 0 ? Math.round((counts.A / total) * 100) : 0;
+    const warriorPct = total > 0 ? Math.round((counts.B / total) * 100) : 0;
+    const teacherPct = total > 0 ? Math.round((counts.C / total) * 100) : 0;
+
+    const clarity = Math.round(
+      (Math.max(counts.A, counts.B, counts.C) / 10) * 40 +
+        (responses[2] !== 'D' && responses[7] !== 'D' && responses[8] !== 'D' ? 30 : 15) +
+        (responses[9] !== 'D' ? 30 : 10)
+    );
+
+    return {
+      clarity: Math.min(clarity, 100),
+      builder: builderPct,
+      warrior: warriorPct,
+      teacher: teacherPct,
+      primary:
+        counts.A > counts.B && counts.A > counts.C
+          ? 'Builder'
+          : counts.B > counts.A && counts.B > counts.C
+          ? 'Warrior'
+          : 'Teacher',
+    };
+  };
+
+  const handleAnswer = (value) => {
+    const newAnswers = [...answers, value];
+    setAnswers(newAnswers);
+
+    if (newAnswers.length === 10) {
+      const score = calculateScore(newAnswers);
+      setClarityScore(score.clarity);
+      setArchetype(score);
+      setScreen('results');
+    }
+  };
+
+  const handleAtlasMessage = () => {
+    if (!userInput.trim()) return;
+
+    const newConversation = [...atlasConversation, { role: 'user', text: userInput }];
+
+    const atlasResponses = {
+      default: "That's a real question. Let's dig deeper. What's driving this?",
+      purpose:
+        "Your purpose is heavy. But that's exactly why it matters. What specifically are you wrestling with?",
+      fear: 'Fear is just clarity trying to protect you. What are you actually afraid of?',
+      quit: 'Before you quit, answer this: Are you running FROM something or running TOWARD something?',
+      build: "Now we're talking. What's the first step? Not the big vision—the next small step.",
+    };
+
+    let response = atlasResponses.default;
+    if (userInput.toLowerCase().includes('purpose')) response = atlasResponses.purpose;
+    if (userInput.toLowerCase().includes('afraid') || userInput.toLowerCase().includes('scared'))
+      response = atlasResponses.fear;
+    if (userInput.toLowerCase().includes('quit') || userInput.toLowerCase().includes('leave'))
+      response = atlasResponses.quit;
+    if (userInput.toLowerCase().includes('build') || userInput.toLowerCase().includes('start'))
+      response = atlasResponses.build;
+
+    newConversation.push({ role: 'atlas', text: response });
+    setAtlasConversation(newConversation);
+    setUserInput('');
+  };
+
+  // Elegant wrapper + background
+  const Background = ({ children }) => (
+    <div className="min-h-screen relative overflow-hidden bg-slate-950 text-white">
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
+      <div className="absolute inset-0 opacity-[0.35]" style={{
+        background:
+          'radial-gradient(1200px 1200px at 50% 0%, rgba(124,58,237,0.15), transparent 60%), radial-gradient(900px 900px at 100% 0%, rgba(14,165,233,0.12), transparent 55%), radial-gradient(900px 900px at 0% 10%, rgba(251,191,36,0.10), transparent 50%)',
+      }} />
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background:
+          'radial-gradient(700px 700px at 50% 50%, rgba(234,179,8,0.06), transparent 60%)',
+      }} />
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+
+  // Header with logo and brand (fallback if logo missing)
+  const Header = () => (
+    <header className="pt-10 pb-4">
+      <div className="max-w-6xl mx-auto px-6 flex items-center gap-4">
+        {logoOk ? (
+          <img
+            src={logoSrc}
+            alt="TELIOS"
+            className="h-10 w-auto object-contain"
+            onError={() => setLogoOk(false)}
+          />
+        ) : (
+          <div className="text-white/90 font-['Playfair Display',serif] text-2xl tracking-wide">TELIOS</div>
+        )}
+        <span className="ml-auto text-xs text-slate-400 tracking-widest">PURPOSE • CLARITY • DISCIPLINE</span>
+      </div>
+    </header>
+  );
+
+  // OATH GATE
+  if (gate === 'oath') {
+    return (
+      <Background>
+        <Header />
+        <main className="max-w-3xl mx-auto px-6 pb-24">
+          <section className="relative rounded-3xl border border-amber-500/20 bg-slate-900/40 backdrop-blur-md p-8 md:p-12 shadow-[0_0_40px_rgba(234,179,8,0.08)]">
+            <div className="absolute inset-x-0 -top-28 h-64 pointer-events-none">
+              <Spline scene="https://prod.spline.design/4cHQr84zOGAHOehh/scene.splinecode" style={{ width: '100%', height: '100%' }} />
             </div>
 
-            <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">
-              Flames Blue
+            <div className="text-center mt-40 space-y-2">
+              <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white/95 font-['Playfair Display',serif]">The TELIOS Oath</h1>
+              <p className="text-slate-300">Read carefully. This is a commitment to yourself.</p>
+            </div>
+
+            <div className="mt-8 space-y-6 text-slate-200 leading-relaxed">
+              <p>I declare that I am responsible for my life, my actions, and my outcomes.</p>
+              <p>I choose to live with purpose, clarity, and discipline.</p>
+              <p>I commit to confronting my weaknesses with honesty and courage.</p>
+              <p>I commit to the daily actions required to become the man I am meant to be.</p>
+              <p>I agree to be accountable to myself, my commitments, and my path.</p>
+              <p>I understand that excuses are the enemy of my potential.</p>
+              <p>I accept the guidance of ATLAS with openness and integrity.</p>
+              <p>I step forward as a man who aligns action with purpose.</p>
+              <p>From this moment on, I live in accordance with the principles of TELIOS.</p>
+              <p className="font-medium text-amber-300">I accept this oath.</p>
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                onClick={() => setGate('fund')}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold py-3 px-6 rounded-lg transition shadow-sm"
+              >
+                I Accept
+              </button>
+              <button
+                onClick={() => setGate('stopped')}
+                className="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-lg border border-slate-700 transition"
+              >
+                I Do Not Accept
+              </button>
+            </div>
+
+            <p className="mt-8 text-xs text-slate-400 border-t border-slate-800 pt-6">
+              Nothing in the TELIOS Oath or Commitment Fund constitutes a legal contract or financial investment. The Oath is a personal declaration. The Commitment Fund is a voluntary behavioral tool, fully refundable, and may be withdrawn by the user at any time. TELIOS does not assume liability for personal decisions, financial choices, or emotional outcomes. This platform offers guidance, structure, and support — not medical, legal, financial, or psychological treatment.
+            </p>
+          </section>
+        </main>
+      </Background>
+    );
+  }
+
+  if (gate === 'stopped') {
+    return (
+      <Background>
+        <Header />
+        <div className="max-w-2xl mx-auto px-6 py-24 text-center">
+          <p className="text-slate-300">Access denied. You must accept the Oath to proceed.</p>
+        </div>
+      </Background>
+    );
+  }
+
+  // Commitment Fund step
+  if (gate === 'fund') {
+    return (
+      <Background>
+        <Header />
+        <main className="max-w-3xl mx-auto px-6 pb-24">
+          <section className="rounded-3xl border border-amber-500/20 bg-slate-900/40 backdrop-blur-md p-8 md:p-12 shadow-[0_0_40px_rgba(234,179,8,0.08)]">
+            <div className="flex items-center gap-3 mb-6 text-amber-300">
+              <Zap className="w-5 h-5" />
+              <span className="tracking-wide text-sm">TELIOS Commitment Fund</span>
+            </div>
+
+            <h2 className="text-3xl md:text-4xl font-semibold text-white/95 mb-4 font-['Playfair Display',serif]">Skin in the Game</h2>
+            <p className="text-slate-300 leading-relaxed">
+              To strengthen your commitment, TELIOS uses the Commitment Fund. You contribute $100. This contribution is fully refundable. You earn back the full amount through daily consistency, weekly completion, and monthly alignment. Your fund is held in your TELIOS Account and can be withdrawn at any time.
+            </p>
+            <p className="text-slate-300 leading-relaxed mt-4">
+              If you choose, you may allocate any portion of your fund to: your personal refund, future commitment cycles, the TELIOS Solidarity Fund (supporting men who cannot afford the program), or a cause aligned with your values. This system is not a penalty. It is a reinforcement mechanism. It ensures you have skin in the game, and that your commitment holds weight.
+            </p>
+
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                onClick={() => setGate('app')}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold py-3 px-6 rounded-lg transition shadow-sm"
+              >
+                I Understand. Proceed
+              </button>
+              <button
+                onClick={() => setGate('stopped')}
+                className="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-lg border border-slate-700 transition"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <p className="mt-8 text-xs text-slate-400 border-t border-slate-800 pt-6">
+              Nothing in the TELIOS Oath or Commitment Fund constitutes a legal contract or financial investment. The Oath is a personal declaration. The Commitment Fund is a voluntary behavioral tool, fully refundable, and may be withdrawn by the user at any time. TELIOS does not assume liability for personal decisions, financial choices, or emotional outcomes. This platform offers guidance, structure, and support — not medical, legal, financial, or psychological treatment.
+            </p>
+          </section>
+        </main>
+      </Background>
+    );
+  }
+
+  // Once commitment acknowledged, proceed to main app
+  if (gate === 'app' && screen === 'landing') {
+    return (
+      <Background>
+        <Header />
+        <div className="max-w-6xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div className="order-2 lg:order-1 space-y-8">
+            <div className="inline-flex items-center gap-2 text-amber-300/90">
+              <Compass className="w-5 h-5" />
+              <span className="tracking-wide text-sm">The Purpose Operating System for Men</span>
+            </div>
+
+            <h1 className="text-5xl md:text-6xl font-semibold leading-tight font-['Playfair Display',serif]">
+              TELIOS
             </h1>
-
-            <p className="text-xl text-blue-200 mb-6">
-              Build applications through conversation
+            <p className="text-lg text-slate-300 max-w-prose">
+              You don't have a discipline problem. You have a purpose problem. Discover your mission. Live it daily.
             </p>
+
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                { icon: '🔨', title: 'Builder', desc: 'Create systems and businesses' },
+                { icon: '⚔️', title: 'Warrior', desc: 'Protect, serve, and lead' },
+                { icon: '📚', title: 'Teacher', desc: 'Guide and illuminate' },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="bg-slate-900/50 backdrop-blur border border-amber-500/10 rounded-xl p-5 text-center hover:border-amber-400/40 transition"
+                >
+                  <div className="text-3xl mb-2">{item.icon}</div>
+                  <h4 className="font-semibold mb-1">{item.title}</h4>
+                  <p className="text-xs text-slate-400">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <button
+                onClick={() => setScreen('assessment')}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold py-4 px-8 rounded-lg inline-flex items-center gap-2 text-lg transition shadow-sm"
+              >
+                Discover Your Purpose <ArrowRight className="w-5 h-5" />
+              </button>
+              <p className="text-slate-400 text-sm mt-3">3 minutes to clarity</p>
+            </div>
+
+            <div className="bg-slate-900/50 border border-amber-500/10 rounded-xl p-6 space-y-3">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-1" />
+                <div>
+                  <p className="font-medium">The Problem</p>
+                  <p className="text-slate-400 text-sm">
+                    Most men work jobs that drain them. Chase goals society gave them. Feel successful on paper but empty inside. You know you're capable of more—you just don't know what or why.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Instructions */}
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-blue-500/20 rounded-2xl p-8 shadow-xl mb-6">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-bold">
-                1
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-1">Describe your idea</h3>
-                <p className="text-blue-200/80 text-sm">Use the chat panel on the left to tell the AI what you want to build</p>
-              </div>
+          <div className="order-1 lg:order-2 min-h-[420px] relative">
+            <div className="absolute inset-0 rounded-3xl overflow-hidden border border-amber-500/20 bg-slate-900/40 backdrop-blur shadow-[0_0_40px_rgba(234,179,8,0.08)]">
+              <Spline scene="https://prod.spline.design/4cHQr84zOGAHOehh/scene.splinecode" style={{ width: '100%', height: '100%' }} />
             </div>
-
-            <div className="flex items-start gap-4 mb-6">
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-bold">
-                2
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-1">Watch it build</h3>
-                <p className="text-blue-200/80 text-sm">Your app will appear in this preview as the AI generates the code</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-bold">
-                3
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-1">Refine and iterate</h3>
-                <p className="text-blue-200/80 text-sm">Continue the conversation to add features and make changes</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-center">
-            <p className="text-sm text-blue-300/60">
-              No coding required • Just describe what you want
-            </p>
           </div>
         </div>
-      </div>
-    </div>
-  )
+      </Background>
+    );
+  }
+
+  // Assessment Screen
+  if (gate === 'app' && screen === 'assessment') {
+    const currentQ = questions[answers.length];
+    const progress = Math.round((answers.length / 10) * 100);
+
+    return (
+      <Background>
+        <Header />
+        <div className="max-w-2xl mx-auto px-6 py-12">
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-slate-400">Question {answers.length + 1} of 10</p>
+              <p className="font-semibold text-amber-400">{progress}%</p>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-amber-500 h-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-500/20 bg-slate-900/50 backdrop-blur p-8 space-y-6">
+            <h2 className="text-2xl md:text-3xl font-semibold text-center font-['Playfair Display',serif]">{currentQ.text}</h2>
+
+            <div className="space-y-3">
+              {currentQ.options.map((option, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleAnswer(option.value)}
+                  className="w-full text-left p-4 rounded-lg border border-slate-700 hover:border-amber-400/50 hover:bg-slate-800 transition font-medium"
+                >
+                  {option.text}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Background>
+    );
+  }
+
+  // Results Screen
+  if (gate === 'app' && screen === 'results') {
+    const messages = {
+      high: 'You know your direction. Time for execution.',
+      medium: "You're close. Some refinement needed.",
+      low: "You're searching—and that's where discovery begins.",
+      verylow: "You're in the wilderness. Let's find your North Star.",
+    };
+
+    const messageLevel =
+      clarityScore >= 85 ? 'high' : clarityScore >= 60 ? 'medium' : clarityScore >= 40 ? 'low' : 'verylow';
+    const message = messages[messageLevel];
+
+    return (
+      <Background>
+        <Header />
+        <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-4xl font-semibold font-['Playfair Display',serif]">Your Purpose Profile</h2>
+
+            <div className="rounded-2xl border border-amber-500/20 bg-slate-900/50 backdrop-blur p-8 space-y-2">
+              <p className="text-slate-400 tracking-wide">PURPOSE CLARITY SCORE</p>
+              <p className="text-6xl font-bold text-amber-400">{clarityScore}%</p>
+              <p className="text-slate-300 pt-2">{message}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-500/20 bg-slate-900/50 backdrop-blur p-8 space-y-6">
+            <h3 className="text-xl font-semibold">Your Archetype Profile</h3>
+
+            {[
+              { icon: '🔨', name: 'Builder', score: archetype.builder },
+              { icon: '⚔️', name: 'Warrior', score: archetype.warrior },
+              { icon: '📚', name: 'Teacher', score: archetype.teacher },
+            ].map((arch, i) => (
+              <div key={i}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium">{arch.icon} {arch.name}</span>
+                  <span className="text-amber-400">{arch.score}%</span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                  <div className="bg-amber-500 h-full transition-all duration-300" style={{ width: `${arch.score}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-amber-500/20 bg-slate-900/50 backdrop-blur p-6 space-y-3">
+            <p className="text-sm text-slate-300">
+              <strong>Primary:</strong> {archetype.primary}
+            </p>
+            <p className="text-slate-400 text-sm">
+              Most men are hybrids. Your results show where your strengths lie—not a box you're locked into.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setScreen('atlas');
+                setCurrentUser({ archetype: archetype.primary, clarity: clarityScore });
+              }}
+              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold py-4 rounded-lg transition"
+            >
+              Meet ATLAS - Your AI Mentor
+            </button>
+            <button
+              onClick={() => {
+                setScreen('landing');
+                setAnswers([]);
+              }}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-4 rounded-lg border border-slate-700 transition"
+            >
+              Start Over
+            </button>
+          </div>
+        </div>
+      </Background>
+    );
+  }
+
+  // ATLAS Mentor Screen
+  if (gate === 'app' && screen === 'atlas' && currentUser) {
+    return (
+      <Background>
+        <Header />
+        <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Zap className="w-7 h-7 text-amber-400" />
+            <h2 className="text-2xl font-semibold tracking-tight">ATLAS</h2>
+            <p className="text-slate-400 ml-auto text-sm">Your Purpose Mentor</p>
+          </div>
+
+          {atlasConversation.length === 0 && (
+            <div className="rounded-2xl border border-amber-500/20 bg-slate-900/50 backdrop-blur p-8 text-center space-y-3">
+              <p className="text-lg">
+                Your clarity score: <span className="font-bold text-amber-400">{currentUser.clarity}%</span>
+              </p>
+              <p className="text-slate-400">
+                {currentUser.clarity >= 80
+                  ? "You're ready. Execute. What's your first move?"
+                  : currentUser.clarity >= 60
+                  ? "You're on the path. What question are you wrestling with?"
+                  : "You're searching. What feels most unclear right now?"}
+              </p>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-amber-500/20 bg-slate-900/50 backdrop-blur p-6 space-y-4 max-h-96 overflow-y-auto">
+            {atlasConversation.map((msg, i) => (
+              <div key={i} className={`space-y-2 ${msg.role === 'atlas' ? '' : 'text-right'}`}>
+                <p className={`text-xs font-semibold ${msg.role === 'atlas' ? 'text-amber-400' : 'text-slate-400'}`}>
+                  {msg.role === 'atlas' ? 'ATLAS' : 'You'}
+                </p>
+                <p className={`p-3 rounded-lg ${msg.role === 'atlas' ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-slate-800 border border-slate-700'}`}>
+                  {msg.text}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAtlasMessage()}
+              placeholder="Ask ATLAS..."
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-400"
+            />
+            <button
+              onClick={handleAtlasMessage}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-6 rounded-lg transition"
+            >
+              Send
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              setScreen('landing');
+              setAnswers([]);
+              setAtlasConversation([]);
+            }}
+            className="w-full text-slate-400 hover:text-white py-2 transition text-sm"
+          >
+            ← Back to Home
+          </button>
+        </div>
+      </Background>
+    );
+  }
+
+  return null;
 }
 
-export default App
+export default App;
