@@ -8,11 +8,30 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        heading: ['Playfair Display', 'serif'],
+        body: ['Lora', 'serif'],
         geist: ['Geist', 'system-ui', 'sans-serif'],
         'geist-mono': ['Geist Mono', 'monospace'],
         mona: ['Mona Sans', 'system-ui', 'sans-serif'],
         'ibm-plex': ['IBM Plex Sans', 'system-ui', 'sans-serif'],
         manrope: ['Manrope', 'system-ui', 'sans-serif'],
+      },
+      colors: {
+        brand: {
+          50: '#FFF8E1',
+          100: '#FFEFB3',
+          200: '#FFE680',
+          300: '#FFDD4D',
+          400: '#FACC15',
+          500: '#EAB308',
+          600: '#CA8A04',
+          700: '#A16207',
+          800: '#854D0E',
+          900: '#713F12',
+        },
+      },
+      backgroundImage: {
+        'telios-dark': 'radial-gradient(1200px 1200px at 50% 0%, rgba(124,58,237,0.15), transparent 60%), radial-gradient(900px 900px at 100% 0%, rgba(14,165,233,0.12), transparent 55%), radial-gradient(900px 900px at 0% 10%, rgba(251,191,36,0.10), transparent 50%)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
